@@ -1,0 +1,71 @@
+name: CI/CD Pipeline API REST
+
+# 1. Flujo de trabajo: Se ejecuta en push o pull_request a la rama main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  # Trabajo 1: Pruebas y Cobertura
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código fuente
+        uses: actions/checkout@v3
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Instalar dependencias
+        run: npm install
+
+      # Ejecuta la batería de pruebas y muestra el resumen de cobertura en los logs
+      - name: Ejecutar pruebas
+        run: npm run test
+
+  # Trabajo 2: Gestión de Artefactos (Docker Hub)
+  build_and_push:
+    needs: test # Solo se ejecuta si las pruebas pasan exitosamente
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar código fuente
+        uses: actions/checkout@v3
+
+      # Autenticación segura usando GitHub Secrets (PAT)
+      - name: Iniciar sesión en Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      # Compila y etiqueta la imagen con :latest y el hash del commit
+      - name: Construir y publicar en Docker Hub
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/api-proyecto:latest
+            ${{ secrets.DOCKER_USERNAME }}/api-proyecto:${{ github.sha }}
+
+  # Trabajo 3: Despliegue Continuo (AWS EC2)
+  deploy:
+    needs: build_and_push # Solo se ejecuta si la imagen se publicó correctamente
+    runs-on: ubuntu-latest
+    steps:
+      # Conexión SSH a la EC2 para descargar y levantar la nueva versión
+      - name: Desplegar en servidor AWS
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/api-proyecto:latest
+            sudo docker stop api-rest || true
+            sudo docker rm api-rest || true
+            sudo docker run -d --name api-rest -p 80:3000 ${{ secrets.DOCKER_USERNAME }}/api-proyecto:latest
