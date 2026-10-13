@@ -11,6 +11,16 @@ let products = [{ id: 1, name: 'Laptop', price: 15000 }];
 // RECURSO 1: USERS (5 Endpoints)
 // ==========================================
 
+// ==========================================
+// ENDPOINT DE COMPROBACIÓN
+// ==========================================
+app.get('/api/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'OK', 
+        message: 'La API está funcionando correctamente en el servidor' 
+    });
+});
+
 // 1. GET ALL
 app.get('/api/users', (req, res) => res.json(users));
 
