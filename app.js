@@ -16,7 +16,7 @@ let products = [{ id: 1, name: 'Laptop', price: 15000 }];
 // ==========================================
 app.get('/api/health', (req, res) => {
     res.status(200).json({ 
-        status: 'OK', 
+        status: 'OKs', 
         message: 'La API está funcionando correctamente en el servidor' 
     });
 });
